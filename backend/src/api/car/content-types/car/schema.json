@@ -1,0 +1,105 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cars",
+  "info": {
+    "singularName": "car",
+    "pluralName": "cars",
+    "displayName": "Cars",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "brand": {
+      "type": "string",
+      "required": true
+    },
+    "model": {
+      "type": "string",
+      "required": true
+    },
+    "year": {
+      "type": "biginteger",
+      "required": true
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "price": {
+      "type": "decimal",
+      "required": true
+    },
+    "rating": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "hasAC": {
+      "type": "boolean",
+      "required": true
+    },
+    "hasDriver": {
+      "type": "boolean",
+      "required": true
+    },
+    "fuelType": {
+      "type": "enumeration",
+      "enum": [
+        "Essence",
+        "Diesel",
+        "Électrique",
+        "Hybride"
+      ],
+      "required": true
+    },
+    "transmission": {
+      "type": "enumeration",
+      "enum": [
+        "Automatique",
+        "Manuelle"
+      ],
+      "required": true
+    },
+    "seats": {
+      "type": "integer",
+      "required": true
+    },
+    "category": {
+      "type": "string",
+      "required": true
+    },
+    "features": {
+      "type": "json",
+      "required": true
+    },
+    "available": {
+      "type": "boolean",
+      "required": true
+    },
+    "licensePlate": {
+      "type": "string"
+    },
+    "mileage": {
+      "type": "integer"
+    },
+    "createdAtt": {
+      "type": "datetime"
+    },
+    "updatedAtt": {
+      "type": "datetime"
+    }
+  }
+}

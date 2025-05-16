@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notifications"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "userId": {
+      "type": "integer",
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "bookingConfirmation",
+        "paymentSuccess",
+        "reminder",
+        "other"
+      ],
+      "required": true
+    },
+    "isRead": {
+      "type": "boolean",
+      "required": true
+    },
+    "date": {
+      "type": "datetime",
+      "required": true
+    },
+    "link": {
+      "type": "string"
+    },
+    "createdAtt": {
+      "type": "datetime"
+    },
+    "updatedAtt": {
+      "type": "datetime"
+    }
+  }
+}

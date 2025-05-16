@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "faqs",
+  "info": {
+    "singularName": "faq",
+    "pluralName": "faqs",
+    "displayName": "FAQ"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "question": {
+      "type": "string",
+      "required": true
+    },
+    "answer": {
+      "type": "string",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "booking",
+        "payment",
+        "cars",
+        "other"
+      ],
+      "required": true
+    },
+    "order": {
+      "type": "integer",
+      "required": true
+    },
+    "active": {
+      "type": "boolean",
+      "required": true
+    },
+    "createdAtt": {
+      "type": "datetime",
+      "required": true
+    },
+    "updatedAtt": {
+      "type": "date",
+      "required": true
+    }
+  }
+}

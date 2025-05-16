@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "booking_options",
+  "info": {
+    "singularName": "booking-option",
+    "pluralName": "booking-options",
+    "displayName": "BookingOptions"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "di": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "price": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": false
+    },
+    "icon": {
+      "type": "string",
+      "required": false
+    },
+    "createdAtt": {
+      "type": "datetime"
+    },
+    "updatedAtt": {
+      "type": "datetime"
+    }
+  }
+}

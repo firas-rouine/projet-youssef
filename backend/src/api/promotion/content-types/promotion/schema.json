@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "promotions",
+  "info": {
+    "singularName": "promotion",
+    "pluralName": "promotions",
+    "displayName": "Promotions"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string",
+      "required": true
+    },
+    "discountPercentage": {
+      "type": "decimal",
+      "required": true
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date",
+      "required": true
+    },
+    "cars": {
+      "type": "json"
+    },
+    "categories": {
+      "type": "json"
+    },
+    "active": {
+      "type": "boolean",
+      "required": true
+    },
+    "createdAtt": {
+      "type": "datetime"
+    },
+    "updatedAtt": {
+      "type": "datetime"
+    }
+  }
+}
