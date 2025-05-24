@@ -29,6 +29,7 @@ export interface LocationPreferences {
 }
 
 export interface Car {
+  price: number;
   id: string;
   brand: string;
   model: string;

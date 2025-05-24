@@ -1,130 +1,277 @@
+import axios from "axios";
+import { format, differenceInDays } from "date-fns";
+import { Reservation, ReservationStatus, statusFrToEn, User, Car } from "@/lib/types";
 
-import { users } from "@/lib/mockData";
-import { addDays, subDays, format } from "date-fns";
-import { ReservationStatus, statusFrToEn } from "@/lib/types";
+const API_URL = "http://localhost:1337/api/reservations";
 
-// Mock data pour les réservations
-const mockReservations = Array.from({ length: 25 }, (_, i) => {
-  const userId = users[Math.floor(Math.random() * users.length)].id;
-  const user = users.find(u => u.id === userId);
-  const username = user ? `${user.firstName} ${user.lastName}` : "Client inconnu";
-  
-  const carId = `car-${Math.floor(Math.random() * 10) + 1}`;
-  const carModels = ["BMW Série 3", "Mercedes C200", "Audi A4", "VW Golf", "Renault Clio", "Peugeot 208", "Toyota Corolla", "Hyundai i30"];
-  const carName = carModels[Math.floor(Math.random() * carModels.length)];
-  
-  const createdAt = subDays(new Date(), Math.floor(Math.random() * 30)).toISOString();
-  const startDate = subDays(new Date(), Math.floor(Math.random() * 10)).toISOString();
-  const endDate = addDays(new Date(startDate), Math.floor(Math.random() * 10) + 1).toISOString();
-  
-  const totalPrice = Math.floor(Math.random() * 500) + 100;
-  
-  const statusOptions = ["en attente", "confirmée", "annulée", "terminée"];
-  const status = statusOptions[Math.floor(Math.random() * statusOptions.length)] as ReservationStatus;
-  
-  const paymentStatusOptions = ["pending", "paid", "refunded"];
-  const paymentStatus = paymentStatusOptions[Math.floor(Math.random() * paymentStatusOptions.length)] as "pending" | "paid" | "refunded";
-  
-  return {
-    id: `res-${i + 1000}`,
-    userId,
-    carId,
-    startDate,
-    endDate,
-    totalPrice,
-    status,
-    paymentStatus,
-    createdAt,
-    userName: username,
-    carName,
-    withDriver: Math.random() > 0.7,
-    withChildSeat: Math.random() > 0.8,
-    withGPS: Math.random() > 0.7
+interface StrapiReservationResponse {
+  id: number;
+  attributes: {
+    startDate: string;
+    endDate: string;
+    totalPrice: number;
+    status: ReservationStatus;
+    withDriver: boolean;
+    withChildSeat: boolean;
+    withGPS: boolean;
+    paymentMethod?: string;
+    paymentStatus?: "pending" | "paid" | "refunded";
+    createdAt: string;
+    user?: { data: { id: number; attributes: Omit<User, "id"> } };
+    car?: { data: { id: number; attributes: Omit<Car, "id" | "images"> & { images?: { data: Array<{ attributes: { url: string } }> } } } };
   };
-});
+}
 
-// Service pour les réservations
 export const reservationService = {
-  // Obtenir toutes les réservations
-  getAllReservations: async () => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return mockReservations;
+  getAllReservations: async (): Promise<(Reservation & { userName?: string; carName?: string })[]> => {
+    try {
+      const response = await axios.get<{ data: StrapiReservationResponse[] }>(
+        `${API_URL}?populate=user,car.images`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      const reservations = response.data.data;
+      if (!reservations.length) {
+        console.warn("No reservations found");
+        return [];
+      }
+      return reservations.map((item) => {
+        const user = item.attributes.user?.data?.attributes;
+        const car = item.attributes.car?.data?.attributes;
+        return {
+          id: item.id.toString(),
+          userId: item.attributes.user?.data?.id.toString() || "",
+          carId: item.attributes.car?.data?.id.toString() || "",
+          startDate: item.attributes.startDate,
+          endDate: item.attributes.endDate,
+          totalPrice: item.attributes.totalPrice,
+          status: item.attributes.status,
+          withDriver: item.attributes.withDriver,
+          withChildSeat: item.attributes.withChildSeat,
+          withGPS: item.attributes.withGPS,
+          paymentMethod: item.attributes.paymentMethod,
+          paymentStatus: item.attributes.paymentStatus,
+          createdAt: item.attributes.createdAt,
+          userName: user ? `${user.firstName} ${user.lastName}` : "Client inconnu",
+          carName: car ? `${car.brand} ${car.model}` : "Voiture inconnue",
+        };
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn("Reservations endpoint not found");
+        return [];
+      }
+      if (error.response?.status === 403) {
+        console.warn("Access denied: Insufficient permissions for reservations");
+        return [];
+      }
+      console.error("Error fetching reservations:", error.response?.data || error.message);
+      throw error;
+    }
   },
 
-  // Obtenir une réservation par son ID
-  getReservationById: async (id: string) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const reservation = mockReservations.find(r => r.id === id);
-    return reservation;
+  getReservationById: async (id: string): Promise<(Reservation & { userName?: string; carName?: string }) | null> => {
+    try {
+      const response = await axios.get<{ data: StrapiReservationResponse }>(
+        `${API_URL}/${id}?populate=user,car.images`, // Line ~70
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      const item = response.data.data;
+      if (!item) return null;
+      const user = item.attributes.user?.data?.attributes;
+      const car = item.attributes.car?.data?.attributes;
+      return {
+        id: item.id.toString(),
+        userId: item.attributes.user?.data?.id.toString() || "",
+        carId: item.attributes.car?.data?.id.toString() || "",
+        startDate: item.attributes.startDate,
+        endDate: item.attributes.endDate,
+        totalPrice: item.attributes.totalPrice,
+        status: item.attributes.status,
+        withDriver: item.attributes.withDriver,
+        withChildSeat: item.attributes.withChildSeat,
+        withGPS: item.attributes.withGPS,
+        paymentMethod: item.attributes.paymentMethod,
+        paymentStatus: item.attributes.paymentStatus,
+        createdAt: item.attributes.createdAt,
+        userName: user ? `${user.firstName} ${user.lastName}` : "Client inconnu",
+        carName: car ? `${car.brand} ${car.model}` : "Voiture inconnue",
+      };
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn(`Reservation ${id} not found`); // Line ~97
+        return null;
+      }
+      if (error.response?.status === 403) {
+        console.warn(`Access denied for reservation ${id}: Insufficient permissions`);
+        return null;
+      }
+      console.error(`Error fetching reservation ${id}:`, error.response?.data || error.message); // Line ~100
+      return null; // Changed from throw to return null
+    }
   },
 
-  // Obtenir les réservations d'un utilisateur
-  getUserReservations: async (userId: string) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return mockReservations.filter(r => r.userId === userId);
+getUserReservations: async (userId: string): Promise<Reservation[]> => {
+  try {
+    const url = `${API_URL}?filters[user][id][$eq]=${userId}&populate=user,car.images`;
+    console.log("Fetching reservations with URL:", url);
+    const response = await axios.get<{ data: StrapiReservationResponse[] }>(
+      url,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+    );
+    console.log("API Response for user", userId, ":", response.data);
+    const items = response.data.data;
+    if (!items || items.length === 0) {
+      console.warn(`No reservations found for user ${userId}`, response.data);
+      return [];
+    }
+    return items.map((item) => ({
+      id: item.id.toString(),
+      userId: item.attributes.user?.data?.[0]?.id.toString() || "", // Adjust for oneToMany
+      carId: item.attributes.car?.data?.id.toString() || "",
+      startDate: item.attributes.startDate,
+      endDate: item.attributes.endDate,
+      totalPrice: item.attributes.totalPrice,
+      status: item.attributes.status,
+      withDriver: item.attributes.withDriver,
+      withChildSeat: item.attributes.withChildSeat,
+      withGPS: item.attributes.withGPS,
+      paymentMethod: item.attributes.paymentMethod,
+      paymentStatus: item.attributes.paymentStatus,
+      createdAt: item.attributes.createdAt,
+      userName: item.attributes.user?.data?.[0]?.attributes
+        ? `${item.attributes.user.data[0].attributes.firstName} ${item.attributes.user.data[0].attributes.lastName}`
+        : "Client inconnu",
+      carName: item.attributes.car?.data?.attributes
+        ? `${item.attributes.car.data.attributes.brand} ${item.attributes.car.data.attributes.model}`
+        : "Voiture inconnue",
+    }));
+  } catch (error: any) {
+    console.error(`Error fetching reservations for user ${userId}:`, {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      headers: error.response?.headers
+    });
+    return [];
+  }
+},
+
+createReservation: async (
+    reservationData: Omit<Reservation, "id" | "status" | "paymentStatus" | "createdAt">
+  ): Promise<Reservation> => {
+    try {
+      const response = await axios.post<{ data: StrapiReservationResponse }>(
+        API_URL,
+        {
+          data: {
+            user: reservationData.userId, // singular 'user'
+            car: reservationData.carId,
+            startDate: reservationData.startDate,
+            endDate: reservationData.endDate,
+            totalPrice: reservationData.totalPrice,
+            status: "en attente",
+            withDriver: reservationData.withDriver,
+            withChildSeat: reservationData.withChildSeat,
+            withGPS: reservationData.withGPS,
+            paymentMethod: reservationData.paymentMethod,
+            paymentStatus: "pending",
+            // Do NOT send createdAt - Strapi auto manages timestamps
+          },
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+
+      const item = response.data.data;
+      return {
+        id: item.id.toString(),
+        userId: item.attributes.user?.data?.id.toString() || "",
+        carId: item.attributes.car?.data?.id.toString() || "",
+        startDate: item.attributes.startDate,
+        endDate: item.attributes.endDate,
+        totalPrice: item.attributes.totalPrice,
+        status: item.attributes.status,
+        withDriver: item.attributes.withDriver,
+        withChildSeat: item.attributes.withChildSeat,
+        withGPS: item.attributes.withGPS,
+        paymentMethod: item.attributes.paymentMethod,
+        paymentStatus: item.attributes.paymentStatus,
+        createdAt: item.attributes.createdAt,
+      };
+    } catch (error: any) {
+      console.error("Error creating reservation:", error.response?.data || error.message);
+      throw error;
+    }
   },
 
-  // Créer une réservation
-  createReservation: async (reservationData: any) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Générer un ID pour la nouvelle réservation
-    const newId = `res-${Date.now()}`;
-    
-    // Créer la nouvelle réservation
-    const newReservation = {
-      id: newId,
-      ...reservationData,
-      status: "en attente" as ReservationStatus,
-      paymentStatus: "pending" as const,
-      createdAt: new Date().toISOString()
-    };
-    
-    return newReservation;
-  },
-
-  // Mettre à jour une réservation
-  updateReservationStatus: async (id: string, status: ReservationStatus | "confirmed" | "cancelled" | "completed") => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Gestion des status en français ou anglais
-    let mappedStatus;
-    if (status === "confirmed" || status === "cancelled" || status === "completed") {
+  updateReservationStatus: async (
+    id: string,
+    status: ReservationStatus | "confirmed" | "cancelled" | "completed"
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      let mappedStatus: ReservationStatus;
       if (status === "confirmed") mappedStatus = "confirmée";
       else if (status === "cancelled") mappedStatus = "annulée";
-      else mappedStatus = "terminée";
-    } else {
-      mappedStatus = status;
+      else if (status === "completed") mappedStatus = "terminée";
+      else mappedStatus = status;
+
+      await axios.put(
+        `${API_URL}/${id}`,
+        { data: { status: mappedStatus } },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      return { success: true, message: `Réservation ${id} mise à jour avec le statut: ${mappedStatus}` };
+    } catch (error: any) {
+      console.error(`Error updating reservation ${id} status:`, error.response?.data || error.message);
+      throw error;
     }
-    
-    // Dans une vraie application, on mettrait à jour la réservation dans la base de données
-    return { success: true, message: `Réservation ${id} mise à jour avec le statut: ${mappedStatus}` };
   },
 
-  // Vérifier la disponibilité d'une voiture pour une période donnée
-  checkAvailability: async (carId: string, startDate: string, endDate: string) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 700));
-    
-    // Vérifier s'il y a des réservations qui se chevauchent
-    const overlappingReservations = mockReservations.filter(res => 
-      res.carId === carId && 
-      (res.status !== "annulée" && res.status !== "cancelled") &&
-      !(new Date(res.endDate) < new Date(startDate) || new Date(res.startDate) > new Date(endDate))
-    );
-    
-    return {
-      available: overlappingReservations.length === 0,
-      conflictingReservations: overlappingReservations
-    };
+
+  checkAvailability: async (carId: string, startDate: string, endDate: string): Promise<{ available: boolean; conflictingReservations: Reservation[] }> => {
+    try {
+      const response = await axios.get<{ data: StrapiReservationResponse[] }>(
+        `${API_URL}?filters[car][id][$eq]=${carId}&filters[status][$ne]=annulée`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      const reservations = response.data.data.map((item) => ({
+        id: item.id.toString(),
+        userId: item.attributes.user?.data?.id.toString() || "",
+        carId: item.attributes.car?.data?.id.toString() || "",
+        startDate: item.attributes.startDate,
+        endDate: item.attributes.endDate,
+        totalPrice: item.attributes.totalPrice,
+        status: item.attributes.status,
+        withDriver: item.attributes.withDriver,
+        withChildSeat: item.attributes.withChildSeat,
+        withGPS: item.attributes.withGPS,
+        paymentMethod: item.attributes.paymentMethod,
+        paymentStatus: item.attributes.paymentStatus,
+        createdAt: item.attributes.createdAt,
+      }));
+
+      const overlappingReservations = reservations.filter(
+        (res) =>
+          !(new Date(res.endDate) < new Date(startDate) || new Date(res.startDate) > new Date(endDate))
+      );
+
+      return {
+        available: overlappingReservations.length === 0,
+        conflictingReservations: overlappingReservations,
+      };
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn(`No reservations found for car ${carId}`);
+        return { available: true, conflictingReservations: [] };
+      }
+      if (error.response?.status === 403) {
+        console.warn(`Access denied: Insufficient permissions for car ${carId} availability`);
+        return { available: true, conflictingReservations: [] };
+      }
+      console.error(`Error checking availability for car ${carId}:`, error.response?.data || error.message);
+      throw error;
+    }
   },
-  
-  // Calculer le prix d'une réservation
+
   calculatePrice: async (
     carId: string,
     startDate: string,
@@ -132,48 +279,62 @@ export const reservationService = {
     withDriver: boolean = false,
     withChildSeat: boolean = false,
     withGPS: boolean = false
-  ) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    // Dans une vraie application, on récupérerait les infos de la voiture et calculerait le prix
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Prix de base (simulé - normalement récupéré de la base de données)
-    let basePrice = 100; // prix par défaut
-    
-    // Chercher la voiture dans les données simulées pour obtenir son prix réel
-    const carIdNumber = parseInt(carId.replace('car-', ''));
-    if (carIdNumber >= 1 && carIdNumber <= 10) {
-      basePrice = [250, 220, 240, 120, 110, 90, 95, 280, 85, 150][carIdNumber - 1];
+  ): Promise<number> => {
+    try {
+      const carResponse = await axios.get<{ data: { id: number; attributes: Omit<Car, "id" | "images"> & { images?: { data: Array<{ attributes: { url: string } }> } } } }>(
+        `http://localhost:1337/api/cars/${carId}?populate=images`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      const car = carResponse.data.data.attributes;
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffDays = differenceInDays(end, start) + 1;
+
+      let totalPrice = (car.dailyPrice || 100) * diffDays;
+      if (withDriver) totalPrice += 100 * diffDays;
+      if (withChildSeat) totalPrice += 10 * diffDays;
+      if (withGPS) totalPrice += 15 * diffDays;
+
+      return totalPrice;
+    } catch (error: any) {
+      console.error(`Error calculating price for car ${carId}:`, error.response?.data || error.message);
+      throw error;
     }
-    
-    let totalPrice = basePrice * diffDays;
-    
-    // Ajouts optionnels
-    if (withDriver) totalPrice += 100 * diffDays;
-    if (withChildSeat) totalPrice += 10 * diffDays;
-    if (withGPS) totalPrice += 15 * diffDays;
-    
-    return totalPrice;
   },
-  
-  // Méthode pour confirmer le paiement d'une réservation
-  confirmPayment: async (reservationId: string, paymentMethod: string, cardDetails?: any) => {
-    // Simuler une requête à l'API
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    // Dans une vraie application, on traiterait le paiement via un service comme Stripe
-    return {
-      success: true,
-      paymentId: `pay-${Date.now()}`,
-      reservationId,
-      status: "confirmed" as ReservationStatus,
-      paymentMethod,
-      date: new Date().toISOString()
-    };
-  }
-};
+
+  confirmPayment: async (reservationId: string, paymentMethod: string, cardDetails?: any): Promise<{
+    success: boolean;
+    paymentId: string;
+    reservationId: string;
+    status: ReservationStatus;
+    paymentMethod: string;
+    date: string;
+  }> => {
+    try {
+      await axios.put(
+        `${API_URL}/${reservationId}`,
+        {
+          data: {
+            paymentStatus: "paid",
+            paymentMethod,
+            status: "confirmée",
+          },
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } }
+      );
+      return {
+        success: true,
+        paymentId: `pay-${Date.now()}`,
+        reservationId,
+        status: "confirmée",
+        paymentMethod,
+        date: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      console.error(`Error confirming payment for reservation ${reservationId}:`, error.response?.data || error.message);
+      throw error;
+    }
+  },
+}; 
+

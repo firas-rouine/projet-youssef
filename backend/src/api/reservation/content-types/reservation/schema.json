@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reservations",
+  "info": {
+    "singularName": "reservation",
+    "pluralName": "reservations",
+    "displayName": "Reservation",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "car": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::car.car",
+      "inversedBy": "reservations"
+    },
+    "startDate": {
+      "type": "datetime"
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "totalPrice": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "en attente",
+        "confirmée",
+        "annulée",
+        "terminée"
+      ]
+    },
+    "withDriver": {
+      "type": "boolean"
+    },
+    "withChildSeat": {
+      "type": "boolean"
+    },
+    "withGPS": {
+      "type": "boolean"
+    },
+    "paymentMethod": {
+      "type": "enumeration",
+      "enum": [
+        "creditCard",
+        "paypal",
+        "cash"
+      ]
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "paid",
+        "refunded"
+      ]
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "reservations"
+    }
+  }
+}

@@ -23,6 +23,8 @@ interface EnhancedCarCardProps {
 export function EnhancedCarCard({ car }: EnhancedCarCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { isFavorite, handleToggleFavorite } = useCarFavorite(car.id);
+  //  console.log("SelectedCarCard - car:", car);
+
 
   // Formater le prix
   const formatPrice = (price: number) => {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import FileUpload from "@/components/FileUpload";
 import { Eye, EyeOff } from "lucide-react";
+import axios from "axios";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -30,8 +30,6 @@ export default function Register() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Clear error when field is changed
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -43,63 +41,61 @@ export default function Register() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
-    // Validate name fields
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "Le prénom est requis";
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Le nom est requis";
-    }
-    
-    // Validate email
+    if (!formData.firstName.trim()) newErrors.firstName = "Le prénom est requis";
+    if (!formData.lastName.trim()) newErrors.lastName = "Le nom est requis";
     if (!formData.email) {
       newErrors.email = "L'email est requis";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Format d'email invalide";
     }
-    
-    // Validate phone number (8 digits for Tunisia)
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = "Le numéro de téléphone est requis";
     } else if (!/^\d{8}$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = "Le numéro doit contenir 8 chiffres";
     }
-    
-    // Validate password
     if (!formData.password) {
       newErrors.password = "Le mot de passe est requis";
     } else if (formData.password.length < 8) {
       newErrors.password = "Le mot de passe doit contenir au moins 8 caractères";
     }
-    
-    // Validate password confirmation
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+const uploadProfilePicture = async (file: File): Promise<number[]> => {
+  const formData = new FormData();
+  formData.append("files", file);
+  try {
+    const response = await axios.post("http://localhost:1337/api/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return [response.data[0].id];
+  } catch (error) {
+    throw new Error("Échec du téléchargement de la photo de profil");
+  }
+};
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     setIsLoading(true);
-    
     try {
-      // Here you would handle file upload in a real app
-      // For now, we'll just pass the form data
+      let profilePictureIds: number[] | undefined;
+      if (profilePicture) {
+        profilePictureIds = await uploadProfilePicture(profilePicture);
+      }
       const userData = {
-        ...formData,
-        profilePicture: profilePicture ? URL.createObjectURL(profilePicture) : undefined,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        profilePicture: profilePictureIds,
+        active: true, // Required by schema
       };
-      
       const success = await register(userData, formData.password);
-      
       if (success) {
         toast({
           title: "Inscription réussie",
@@ -107,11 +103,11 @@ export default function Register() {
         });
         navigate("/");
       }
-    } catch (error) {
-      console.error("Registration error:", error);
+    } catch (error: any) {
+      console.error("Registration error:", error.response?.data);
       toast({
         title: "Erreur d'inscription",
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        description: error.response?.data?.error?.message || "Une erreur s'est produite.",
         variant: "destructive",
       });
     } finally {
@@ -130,10 +126,10 @@ export default function Register() {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md">
             <div className="text-center mb-6">
-              <img 
-                src="/lovable-uploads/43daed69-9290-490b-99c3-7d35f12ec6d5.png" 
-                alt="AutoWise" 
-                className="h-10 mx-auto mb-4" 
+              <img
+                src="/lovable-Uploads/43daed69-9290-490b-99c3-7d35f12ec6d5.png"
+                alt="AutoWise"
+                className="h-10 mx-auto mb-4"
               />
               <h1 className="text-2xl font-bold text-autowise-navy">Créer un compte</h1>
               <p className="text-gray-600 mt-1">
@@ -142,7 +138,6 @@ export default function Register() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Profile Picture */}
               <div className="flex justify-center">
                 <FileUpload
                   onFileSelect={setProfilePicture}
@@ -151,7 +146,6 @@ export default function Register() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* First Name */}
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Prénom</Label>
                   <Input
@@ -169,7 +163,6 @@ export default function Register() {
                   )}
                 </div>
 
-                {/* Last Name */}
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Nom</Label>
                   <Input
@@ -187,7 +180,6 @@ export default function Register() {
                   )}
                 </div>
 
-                {/* Email */}
                 <div className="space-y-2">
                   <Label htmlFor="email">Adresse e-mail</Label>
                   <Input
@@ -206,7 +198,6 @@ export default function Register() {
                   )}
                 </div>
 
-                {/* Phone Number */}
                 <div className="space-y-2">
                   <Label htmlFor="phoneNumber">Numéro de téléphone</Label>
                   <Input
@@ -224,7 +215,6 @@ export default function Register() {
                   )}
                 </div>
 
-                {/* Password */}
                 <div className="space-y-2">
                   <Label htmlFor="password">Mot de passe</Label>
                   <div className="relative">
@@ -256,7 +246,6 @@ export default function Register() {
                   )}
                 </div>
 
-                {/* Confirm Password */}
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                   <div className="relative">

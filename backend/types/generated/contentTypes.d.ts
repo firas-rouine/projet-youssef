@@ -736,6 +736,11 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
     active: Attribute.Boolean & Attribute.Required;
     createdAtt: Attribute.DateTime;
     updatedAtt: Attribute.DateTime;
+    reservations: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'oneToMany',
+      'api::reservation.reservation'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -918,6 +923,11 @@ export interface ApiCarCar extends Schema.CollectionType {
     mileage: Attribute.Integer;
     createdAtt: Attribute.DateTime;
     updatedAtt: Attribute.DateTime;
+    reservations: Attribute.Relation<
+      'api::car.car',
+      'oneToMany',
+      'api::reservation.reservation'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1153,6 +1163,57 @@ export interface ApiPromotionPromotion extends Schema.CollectionType {
   };
 }
 
+export interface ApiReservationReservation extends Schema.CollectionType {
+  collectionName: 'reservations';
+  info: {
+    singularName: 'reservation';
+    pluralName: 'reservations';
+    displayName: 'Reservation';
+    description: '';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    car: Attribute.Relation<
+      'api::reservation.reservation',
+      'manyToOne',
+      'api::car.car'
+    >;
+    startDate: Attribute.DateTime;
+    endDate: Attribute.DateTime;
+    totalPrice: Attribute.Decimal;
+    status: Attribute.Enumeration<
+      ['en attente', 'confirm\u00E9e', 'annul\u00E9e', 'termin\u00E9e']
+    >;
+    withDriver: Attribute.Boolean;
+    withChildSeat: Attribute.Boolean;
+    withGPS: Attribute.Boolean;
+    paymentMethod: Attribute.Enumeration<['creditCard', 'paypal', 'cash']>;
+    paymentStatus: Attribute.Enumeration<['pending', 'paid', 'refunded']>;
+    user: Attribute.Relation<
+      'api::reservation.reservation',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::reservation.reservation',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::reservation.reservation',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiReviewReview extends Schema.CollectionType {
   collectionName: 'reviews';
   info: {
@@ -1227,6 +1288,7 @@ declare module '@strapi/types' {
       'api::notification.notification': ApiNotificationNotification;
       'api::payment.payment': ApiPaymentPayment;
       'api::promotion.promotion': ApiPromotionPromotion;
+      'api::reservation.reservation': ApiReservationReservation;
       'api::review.review': ApiReviewReview;
     }
   }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -45,18 +44,7 @@ export default function CarList() {
   }) => {
     setLoading(true);
     try {
-      // Convert the dateRange format if it exists
-      const convertedFilters = {
-        ...filters,
-        dateRange: filters.dateRange 
-          ? { 
-              from: new Date(filters.dateRange.startDate), 
-              to: new Date(filters.dateRange.endDate) 
-            } 
-          : undefined
-      };
-      
-      const filteredCars = await carService.searchCars(convertedFilters);
+      const filteredCars = await carService.searchCars(filters); // Pass filters directly
       setFilteredCars(filteredCars);
     } catch (error) {
       console.error("Error filtering cars:", error);

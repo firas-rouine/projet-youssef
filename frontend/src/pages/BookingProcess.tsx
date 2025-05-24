@@ -88,6 +88,7 @@ export default function BookingProcess() {
                     handlePaymentMethodChange={handlePaymentMethodChange}
                     handleSubmitBooking={handleSubmitBooking}
                     handlePreviousStep={handlePreviousStep}
+                    bookingData={bookingData}
                   />
                 )}
               </div>

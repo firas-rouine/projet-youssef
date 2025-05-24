@@ -100,6 +100,12 @@
     },
     "updatedAtt": {
       "type": "datetime"
+    },
+    "reservations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::reservation.reservation",
+      "mappedBy": "car"
     }
   }
 }

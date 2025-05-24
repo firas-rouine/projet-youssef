@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,22 +9,24 @@ import { CreditCard } from "lucide-react";
 interface PaymentStepProps {
   paymentMethod: string;
   handlePaymentMethodChange: (value: string) => void;
-  handleSubmitBooking: () => void;
+  handleSubmitBooking: (bookingData) => void;
   handlePreviousStep: () => void;
+  bookingData?: any; // You can type this more strictly if you want
 }
 
 export function PaymentStep({
   paymentMethod,
   handlePaymentMethodChange,
   handleSubmitBooking,
-  handlePreviousStep
+  handlePreviousStep,
+  bookingData
 }: PaymentStepProps) {
   return (
     <Card className="p-6">
       <h2 className="text-xl font-medium mb-4">Paiement</h2>
       
       <div className="space-y-6">
-        <RadioGroup defaultValue={paymentMethod} onValueChange={handlePaymentMethodChange}>
+        <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange}>
           <div className="border rounded-lg p-4 mb-3 cursor-pointer hover:bg-gray-50">
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="creditCard" id="creditCard" />
@@ -93,35 +94,17 @@ export function PaymentStep({
               </Label>
             </div>
             <p className="text-gray-600 text-sm ml-6 mt-2">
-              Payez rapidement et en toute sécurité avec Apple Pay.
+              Utilisez Apple Pay pour un paiement rapide et sécurisé.
             </p>
           </div>
         </RadioGroup>
-        
-        <div className="border-t pt-4 mt-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Checkbox id="termsAccepted" required />
-            <Label htmlFor="termsAccepted" className="text-sm">
-              J'accepte les <a href="#" className="text-autowise-blue">conditions générales</a> et la <a href="#" className="text-autowise-blue">politique de confidentialité</a>
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox id="saveCard" />
-            <Label htmlFor="saveCard" className="text-sm">
-              Enregistrer cette carte pour mes futures réservations
-            </Label>
-          </div>
-        </div>
       </div>
-      
+
       <div className="flex justify-between mt-6">
         <Button variant="outline" onClick={handlePreviousStep}>
-          Retour
+          Précédent
         </Button>
-        <Button onClick={handleSubmitBooking} className="bg-autowise-blue hover:bg-autowise-navy">
-          Confirmer et payer
-        </Button>
+<Button onClick={() => handleSubmitBooking(bookingData)}>Confirmer la réservation</Button>
       </div>
     </Card>
   );

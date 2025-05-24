@@ -1,8 +1,7 @@
-
-import React, { useState, ChangeEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import { UploadIcon, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import React, { ChangeEvent, useState } from "react"; // Added useState import
+import { Button } from "@/components/ui/button";
+import { UploadIcon, X } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface FileUploadProps {
   onFileSelect: (file: File | null) => void;
@@ -19,17 +18,20 @@ export default function FileUpload({
   initialPreview,
   acceptedFileTypes = "image/*",
   className = "",
-  maxSizeInMB = 5
+  maxSizeInMB = 5,
 }: FileUploadProps) {
   const [preview, setPreview] = useState<string | undefined>(initialPreview);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    
-    if (!file) return;
-    
-    // File size validation
+
+    if (!file) {
+      setPreview(undefined);
+      onFileSelect(null);
+      return;
+    }
+
     if (file.size > maxSizeInMB * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
@@ -38,15 +40,27 @@ export default function FileUpload({
       });
       return;
     }
-    
+
+    if (!file.type.match(acceptedFileTypes.replace("*", ".*"))) {
+      toast({
+        title: "Type de fichier invalide",
+        description: `Seuls les fichiers ${acceptedFileTypes} sont acceptés`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
-    
-    // Create preview
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
       onFileSelect(file);
       setIsUploading(false);
+      toast({
+        title: "Fichier sélectionné",
+        description: `${file.name} prêt à être téléchargé`,
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -54,6 +68,10 @@ export default function FileUpload({
   const resetFile = () => {
     setPreview(undefined);
     onFileSelect(null);
+    toast({
+      title: "Image supprimée",
+      description: "Aucune image sélectionnée",
+    });
   };
 
   return (
@@ -64,6 +82,7 @@ export default function FileUpload({
             src={preview}
             alt="Aperçu du fichier"
             className="w-32 h-32 object-cover rounded-full"
+            onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
           />
           <button
             onClick={resetFile}
@@ -79,7 +98,7 @@ export default function FileUpload({
           <UploadIcon className="text-gray-400" size={32} />
         </div>
       )}
-      
+
       <div className="flex flex-col items-center">
         <label htmlFor="file-upload" className="cursor-pointer">
           <Button

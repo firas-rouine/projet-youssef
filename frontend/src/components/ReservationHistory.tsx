@@ -30,7 +30,8 @@ export function ReservationHistory() {
         // Enrichir les réservations avec les détails de la voiture
         const enrichedReservations = await Promise.all(
           userReservations.map(async (reservation) => {
-            const car = await carService.getCarById(reservation.carId);
+            const carIdString = reservation.carId.toString();
+            const car = await carService.getCarById(carIdString);
             return { ...reservation, car };
           })
         );

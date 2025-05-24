@@ -27,6 +27,7 @@ import AdminMessages from "./pages/admin/AdminMessages";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminIoT from "./pages/admin/AdminIoT";
 import NotFound from "./pages/NotFound";
+import ReservationDetailsPage from "./pages/ReservationDetailsPage";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Pages publiques */}
+
+
+            <Route path="/reservations/:id" element={<ReservationDetailsPage />} />
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -59,7 +63,7 @@ const App = () => (
             <Route path="/booking" element={<BookingProcess />} />
             <Route path="/booking-confirmation" element={<BookingConfirmation />} />
             <Route path="/booking-success/:id" element={<BookingSuccessPage />} />
-            
+
             {/* Routes Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<AdminUserManagement />} />
@@ -68,7 +72,7 @@ const App = () => (
             <Route path="/admin/messages" element={<AdminMessages />} />
             <Route path="/admin/iot" element={<AdminIoT />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
-            
+
             {/* Route 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -10,6 +10,8 @@ interface SelectedCarCardProps {
 }
 
 export function SelectedCarCard({ car, formatPrice }: SelectedCarCardProps) {
+    // console.log("SelectedCarCard - car:", car); // ✅ Debug the car object
+
   return (
     <Card className="mb-6">
       <div className="p-4 border-b bg-autowise-navy text-white">

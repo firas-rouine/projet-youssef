@@ -34,9 +34,9 @@ export function usePayment() {
         
         // Conversion explicite pour éviter les erreurs de type
         setReservation(reservationData as unknown as Reservation);
-        
         // Récupérer les détails de la voiture
         const carData = await carService.getCarById(reservationData.carId);
+      
         setCar(carData);
 
         // Simuler un traitement de paiement

@@ -21,6 +21,7 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ car, onComplete }: BookingFormProps) {
+  console.log("BookingForm rendered");
   const { user, isAuthenticated } = useAuth();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -37,13 +38,13 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
   const [sameLocation, setSameLocation] = useState(true);
 
   // Load user location preferences
-  useEffect(() => {
-    if (user && user.locationPreferences) {
-      setPickupLocation(user.locationPreferences.pickupLocation || "");
-      setDropoffLocation(user.locationPreferences.dropoffLocation || "");
-      setSameLocation(user.locationPreferences.sameReturnLocation || true);
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user && user.locationPreferences) {
+  //     setPickupLocation(user.locationPreferences.pickupLocation || "");
+  //     setDropoffLocation(user.locationPreferences.dropoffLocation || "");
+  //     setSameLocation(user.locationPreferences.sameReturnLocation || true);
+  //   }
+  // }, [user]);
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
@@ -70,7 +71,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
   const handlePickupLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newLocation = e.target.value;
     setPickupLocation(newLocation);
-    
+
     if (sameLocation) {
       setDropoffLocation(newLocation);
     }
@@ -78,7 +79,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
 
   const handleSameLocationChange = (checked: boolean) => {
     setSameLocation(checked);
-    
+
     if (checked) {
       setDropoffLocation(pickupLocation);
     }
@@ -86,7 +87,8 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    console.log("handleSubmit triggered");  // <-- Add this
+
     if (!isAuthenticated) {
       toast({
         title: "Connexion requise",
@@ -95,9 +97,9 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
       });
       return;
     }
-    
+
     if (!dateRange?.from || !dateRange?.to || !user?.id) return;
-    
+
     if (!pickupLocation || !dropoffLocation) {
       toast({
         title: "Informations manquantes",
@@ -106,7 +108,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       // Check availability
@@ -115,7 +117,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
         dateRange.from.toISOString(),
         dateRange.to.toISOString()
       );
-      
+
       if (!availabilityCheck.available) {
         toast({
           title: "Non disponible",
@@ -125,7 +127,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
         setIsSubmitting(false);
         return;
       }
-      
+
       // Create reservation
       const reservation = await reservationService.createReservation({
         userId: user.id,
@@ -136,15 +138,15 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
         withDriver,
         withChildSeat,
         withGPS,
-        pickupLocation,
-        dropoffLocation,
+        // pickupLocation,
+        // dropoffLocation,
       });
-      
+
       toast({
         title: "Réservation créée",
         description: "Votre demande de réservation a été envoyée",
       });
-      
+
       onComplete(reservation.id);
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -172,16 +174,16 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
         <h3 className="text-lg font-semibold">Détails de la réservation</h3>
 
         {/* Date Selection */}
-        <BookingDates 
-          dateRange={dateRange} 
-          onDateChange={handleDateRangeChange} 
+        <BookingDates
+          dateRange={dateRange}
+          onDateChange={handleDateRangeChange}
           days={days}
         />
 
         {/* Location Selection */}
         <div className="space-y-4">
           <h4 className="text-base font-medium">Lieux de prise en charge et de retour</h4>
-          
+
           <div className="space-y-2">
             <Label htmlFor="pickup-location">Lieu de prise en charge</Label>
             <div className="relative">
@@ -195,14 +197,14 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
               />
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="dropoff-location">Lieu de retour</Label>
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="same-location" 
-                  checked={sameLocation} 
+                <Checkbox
+                  id="same-location"
+                  checked={sameLocation}
                   onCheckedChange={(checked) => handleSameLocationChange(checked === true)}
                 />
                 <Label htmlFor="same-location" className="text-sm font-normal cursor-pointer">
@@ -258,7 +260,7 @@ export function BookingForm({ car, onComplete }: BookingFormProps) {
       >
         {isSubmitting ? "Traitement en cours..." : "Réserver maintenant"}
       </Button>
-      
+
       {!isAuthenticated && (
         <p className="text-sm text-center text-red-500">
           Veuillez vous connecter pour effectuer une réservation

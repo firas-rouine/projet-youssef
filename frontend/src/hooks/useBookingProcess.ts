@@ -59,16 +59,16 @@ export function useBookingProcess() {
   }, [car, updateBookingWithCarInfo]);
   
   // Load user location preferences when component mounts
-  useEffect(() => {
-    if (user && user.locationPreferences) {
-      setBookingData(prev => ({
-        ...prev,
-        pickupLocation: user.locationPreferences?.pickupLocation || prev.pickupLocation,
-        dropoffLocation: user.locationPreferences?.dropoffLocation || prev.dropoffLocation,
-        sameReturnLocation: user.locationPreferences?.sameReturnLocation || prev.sameReturnLocation
-      }));
-    }
-  }, [user, setBookingData]);
+  // useEffect(() => {
+  //   if (user && user.locationPreferences) {
+  //     setBookingData(prev => ({
+  //       ...prev,
+  //       pickupLocation: user.locationPreferences?.pickupLocation || prev.pickupLocation,
+  //       dropoffLocation: user.locationPreferences?.dropoffLocation || prev.dropoffLocation,
+  //       sameReturnLocation: user.locationPreferences?.sameReturnLocation || prev.sameReturnLocation
+  //     }));
+  //   }
+  // }, [user, setBookingData]);
   
   // Format price (e.g., "250 TND")
   const formatPrice = (price: number) => {

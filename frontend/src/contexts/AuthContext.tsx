@@ -1,222 +1,209 @@
+import { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
+import { toast } from "@/hooks/use-toast";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
-import { users } from '@/lib/mockData';
-import { toast } from '@/hooks/use-toast';
+interface User {
+  id: string;
+  role: "admin" | "client";
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  createdAt: string;
+  profilePicture: string;
+  active: boolean;
+}
 
 interface AuthContextType {
   user: User | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (userData: Partial<User>, password: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => Promise<boolean>;
-  updatePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+const API_URL = "http://localhost:1337/api";
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedUser = localStorage.getItem('autowise-user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('autowise-user');
+    const initializeAuth = async () => {
+      const jwt = localStorage.getItem("jwt");
+      const storedUser = localStorage.getItem("autowise-user");
+      if (jwt && storedUser) {
+        try {
+          const userData: User = JSON.parse(storedUser);
+          const response = await axios.get(`${API_URL}/users/me?populate=role,profilePicture`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+          });
+          const isAdmin = response.data.role?.name === "Admin";
+          setUser({ ...userData, role: isAdmin ? "admin" : "client" });
+          setIsAuthenticated(true);
+          setIsAdmin(isAdmin);
+        } catch (error) {
+          console.error("Error verifying auth:", error);
+          localStorage.removeItem("jwt");
+          localStorage.removeItem("autowise-user");
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    initializeAuth();
   }, []);
 
-  // Amélioré pour faciliter la connexion admin
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Special handling for admin login
-    if (email.toLowerCase() === "admin@autowise.com" && password === "admin123") {
-      const adminUser: User = {
-        id: "admin-1",
-        role: "admin",
-        email: "admin@autowise.com",
-        firstName: "Admin",
-        lastName: "AutoWise",
-        phoneNumber: "12345678",
-        createdAt: new Date().toISOString(),
-        notificationPreferences: {
-          email: true,
-          browser: true,
-          sms: false,
-        },
-        profilePicture: "/placeholder.svg",
+    try {
+      const response = await axios.post(`${API_URL}/auth/local`, {
+        identifier: email,
+        password,
+      });
+      const { jwt, user: strapiUser } = response.data;
+      const userResponse = await axios.get(`${API_URL}/users/me?populate=role,profilePicture`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      const isAdmin = userResponse.data.role?.name === "Admin";
+      const mappedUser: User = {
+        id: strapiUser.id.toString(),
+        role: isAdmin ? "admin" : "client",
+        email: strapiUser.email,
+        firstName: strapiUser.firstName || "",
+        lastName: strapiUser.lastName || "",
+        phoneNumber: strapiUser.phoneNumber || "",
+        createdAt: strapiUser.createdAt,
+        profilePicture: strapiUser.profilePicture?.[0]?.url || "/placeholder.svg",
+        active: strapiUser.active || false,
       };
-      
-      setUser(adminUser);
-      localStorage.setItem('autowise-user', JSON.stringify(adminUser));
-      setIsLoading(false);
-      return true;
-    }
-    
-    // Regular user login
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (foundUser) {
-      // Dans une app réelle, on validerait le mot de passe ici
-      setUser(foundUser);
-      localStorage.setItem('autowise-user', JSON.stringify(foundUser));
-      setIsLoading(false);
+      setUser(mappedUser);
+      setIsAuthenticated(true);
+      setIsAdmin(isAdmin);
+      localStorage.setItem("jwt", jwt);
+      localStorage.setItem("autowise-user", JSON.stringify(mappedUser));
       toast({
         title: "Connexion réussie",
-        description: `Bienvenue, ${foundUser.firstName} ${foundUser.lastName}`,
+        description: "Bienvenue sur AutoWise",
       });
       return true;
-    } else {
+    } catch (error: any) {
+      console.error("Login error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        error,
+      });
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        error.message ||
+        "Erreur lors de la connexion";
       toast({
-        title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect",
+        title: "Échec de la connexion",
+        description: errorMessage,
         variant: "destructive",
       });
-      setIsLoading(false);
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Mock register functionality
   const register = async (userData: Partial<User>, password: string) => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if email already exists
-    const emailExists = users.some(u => u.email.toLowerCase() === userData.email?.toLowerCase());
-    
-    if (emailExists) {
+    try {
+      const payload = {
+        username: userData.email,
+        email: userData.email,
+        password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phoneNumber: userData.phoneNumber,
+        profilePicture: userData.profilePicture || null,
+        active: userData.active ?? true,
+      };
+      console.debug("Registration payload:", payload);
+      const response = await axios.post(`${API_URL}/auth/local/register`, payload);
+      const { jwt, user: strapiUser } = response.data;
+      const userResponse = await axios.get(`${API_URL}/users/me?populate=role,profilePicture`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      console.debug("User response:", userResponse.data); // Log response for debugging
+      const isAdmin = userResponse.data.role?.name === "Admin" || false;
+      const mappedUser: User = {
+        id: strapiUser.id.toString(),
+        role: isAdmin ? "admin" : "client",
+        email: strapiUser.email,
+        firstName: strapiUser.firstName || "",
+        lastName: strapiUser.lastName || "",
+        phoneNumber: strapiUser.phoneNumber || "",
+        createdAt: strapiUser.createdAt,
+        profilePicture: strapiUser.profilePicture?.[0]?.url || "/placeholder.svg",
+        active: strapiUser.active || false,
+      };
+      setUser(mappedUser);
+      setIsAuthenticated(true);
+      setIsAdmin(isAdmin);
+      localStorage.setItem("jwt", jwt);
+      localStorage.setItem("autowise-user", JSON.stringify(mappedUser));
+      toast({
+        title: "Inscription réussie",
+        description: "Votre compte a été créé avec succès",
+      });
+      return true;
+    } catch (error: any) {
+      console.error("Registration error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        // payload,
+        error,
+      });
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        error.message ||
+        "Une erreur s'est produite lors de l'inscription";
       toast({
         title: "Échec de l'inscription",
-        description: "Cet email est déjà utilisé",
+        description: errorMessage,
         variant: "destructive",
       });
-      setIsLoading(false);
       return false;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Create new user
-    const newUser: User = {
-      id: `user-${Math.random().toString(36).substring(2, 9)}`,
-      role: "client",
-      email: userData.email || "",
-      firstName: userData.firstName || "",
-      lastName: userData.lastName || "",
-      phoneNumber: userData.phoneNumber || "",
-      createdAt: new Date().toISOString(),
-      notificationPreferences: {
-        email: true,
-        browser: true,
-        sms: false,
-      },
-      profilePicture: "/placeholder.svg",
-    };
-    
-    // Add to users array (in a real app, this would be a DB operation)
-    users.push(newUser);
-    
-    // Log user in
-    setUser(newUser);
-    localStorage.setItem('autowise-user', JSON.stringify(newUser));
-    
-    toast({
-      title: "Inscription réussie",
-      description: "Votre compte a été créé avec succès",
-    });
-    
-    setIsLoading(false);
-    return true;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('autowise-user');
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    localStorage.removeItem("jwt");
+    localStorage.removeItem("autowise-user");
     toast({
       title: "Déconnexion réussie",
-      description: "À bientôt !",
+      description: "Vous êtes déconnecté",
     });
   };
-
-  const updateUser = async (userData: Partial<User>) => {
-    if (!user) return false;
-    
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const updatedUser = { ...user, ...userData };
-    setUser(updatedUser);
-    localStorage.setItem('autowise-user', JSON.stringify(updatedUser));
-    
-    // Update in the users array (simulating DB update)
-    const userIndex = users.findIndex(u => u.id === user.id);
-    if (userIndex !== -1) {
-      users[userIndex] = updatedUser;
-    }
-    
-    toast({
-      title: "Profil mis à jour",
-      description: "Vos informations ont été mises à jour avec succès",
-    });
-    
-    setIsLoading(false);
-    return true;
-  };
-
-  const updatePassword = async (oldPassword: string, newPassword: string) => {
-    // Simulate password change
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Mot de passe mis à jour",
-      description: "Votre mot de passe a été modifié avec succès",
-    });
-    
-    setIsLoading(false);
-    return true;
-  };
-
-  const isAuthenticated = !!user;
-  const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      login,
-      register,
-      logout,
-      updateUser,
-      updatePassword,
-      isAuthenticated,
-      isAdmin
-    }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated, isAdmin, isLoading, login, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}
+};
