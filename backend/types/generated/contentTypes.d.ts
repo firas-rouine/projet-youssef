@@ -905,15 +905,14 @@ export interface ApiCarCar extends Schema.CollectionType {
     images: Attribute.Media<'images' | 'files' | 'videos' | 'audios', true> &
       Attribute.Required;
     price: Attribute.Decimal & Attribute.Required;
-    rating: Attribute.Decimal & Attribute.Required;
     description: Attribute.Text & Attribute.Required;
     hasAC: Attribute.Boolean & Attribute.Required;
     hasDriver: Attribute.Boolean & Attribute.Required;
     fuelType: Attribute.Enumeration<
-      ['Essence', 'Diesel', '\u00C9lectrique', 'Hybride']
+      ['essence', 'diesel', '\u00E9lectrique', 'hybride']
     > &
       Attribute.Required;
-    transmission: Attribute.Enumeration<['Automatique', 'Manuelle']> &
+    transmission: Attribute.Enumeration<['automatique', 'manuelle']> &
       Attribute.Required;
     seats: Attribute.Integer & Attribute.Required;
     category: Attribute.String & Attribute.Required;

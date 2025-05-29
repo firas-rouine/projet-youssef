@@ -12,6 +12,7 @@ import { Edit, Trash, Plus, Search, Upload, X, Image } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import axios from "axios";
 
 export default function AdminCars() {
   const [cars, setCars] = useState<Car[]>([]);
@@ -30,12 +31,12 @@ export default function AdminCars() {
     model: "",
     year: 2023,
     category: "standard" as "économique" | "standard" | "premium" | "luxe" | "utilitaire", // Typed properly
-    dailyPrice: 100,
-    transmission: "automatique" as "manuel" | "automatique", // Typed properly
+    price: 100,
+    transmission: "automatique" as "manuelle" | "automatique", // Typed properly
     fuelType: "essence" as "essence" | "diesel" | "électrique" | "hybride", // Typed properly
     hasAC: true,
     seats: 5,
-    driverAvailable: false,
+    driverAvailable: true,
     hasGPS: false,
     childSeatAvailable: false,
     description: "",
@@ -98,30 +99,29 @@ export default function AdminCars() {
     }));
   };
 
-  const openEditDialog = (car: Car) => {
-    setSelectedCar(car);
-    setFormData({
-      brand: car.brand,
-      model: car.model,
-      year: car.year,
-      category: car.category,
-      dailyPrice: car.dailyPrice,
-      transmission: car.transmission,
-      fuelType: car.fuelType,
-      hasAC: car.hasAC,
-      seats: car.seats,
-      driverAvailable: car.driverAvailable,
-      hasGPS: car.hasGPS,
-      childSeatAvailable: car.childSeatAvailable,
-      description: car.description,
-      features: car.features || [],
-      location: car.location || "Tunis Centre"
-    });
-    setImagePreviewUrls(car.images || []);
-    setUploadedImages([]);
-    setShowEditDialog(true);
-  };
-
+const openEditDialog = (car: Car) => {
+  setSelectedCar(car);
+  setFormData({
+    brand: car.brand,
+    model: car.model,
+    year: car.year,
+    category: car.category.toLowerCase() as "économique" | "standard" | "premium" | "luxe" | "utilitaire",
+    price: car.price,
+    transmission: car.transmission.toLowerCase() as "manuelle" | "automatique", // Normalize to lowercase
+    fuelType: car.fuelType.toLowerCase() as "essence" | "diesel" | "électrique" | "hybride",
+    hasAC: car.hasAC,
+    seats: car.seats,
+    driverAvailable: car.driverAvailable,
+    hasGPS: car.hasGPS,
+    childSeatAvailable: car.childSeatAvailable,
+    description: car.description,
+    features: car.features || [],
+    location: car.location || "Tunis Centre"
+  });
+  setImagePreviewUrls(car.images || []);
+  setUploadedImages([]);
+  setShowEditDialog(true);
+};
   const openAddDialog = () => {
     setSelectedCar(null);
     setFormData({
@@ -129,8 +129,8 @@ export default function AdminCars() {
       model: "",
       year: 2023,
       category: "standard" as "économique" | "standard" | "premium" | "luxe" | "utilitaire",
-      dailyPrice: 100,
-      transmission: "automatique" as "manuel" | "automatique",
+      price: 100,
+      transmission: "automatique" as "manuelle" | "automatique",
       fuelType: "essence" as "essence" | "diesel" | "électrique" | "hybride",
       hasAC: true,
       seats: 5,
@@ -198,95 +198,105 @@ export default function AdminCars() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    
-    try {
-      if (selectedCar) {
-        // Mode édition - Ensure we're sending the correct types to the API
-        const typedFormData = {
-          ...formData,
-          category: formData.category as "économique" | "standard" | "premium" | "luxe" | "utilitaire",
-          transmission: formData.transmission as "manuel" | "automatique",
-          fuelType: formData.fuelType as "essence" | "diesel" | "électrique" | "hybride",
-        };
-        
-        const updatedCar = await carService.updateCar(selectedCar.id, typedFormData, uploadedImages);
-        
-        setCars(prev => prev.map(car => car.id === selectedCar.id ? updatedCar : car));
-        
+
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmitting(true);
+  try {
+    const typedFormData = {
+      brand: formData.brand,
+      model: formData.model,
+      year: Number(formData.year),
+      transmission: formData.transmission.toLowerCase(),
+      fuelType: formData.fuelType.toLowerCase(),
+      seats: Number(formData.seats),
+      price: Number(formData.price),
+      hasAC: formData.hasAC,
+      hasDriver: formData.driverAvailable,
+      description: formData.description,
+      features: formData.features,
+      category: formData.category,
+      available: true,
+    };
+console.log("Submitting car update with data:", typedFormData);
+console.log("Uploaded images:", uploadedImages);
+
+    if (selectedCar) {
+      const updatedCar = await carService.updateCar(selectedCar.id, typedFormData, uploadedImages);
+      setCars((prev) => prev.map((car) => (car.id === selectedCar.id ? updatedCar : car)));
+      toast({
+        title: "Véhicule modifié",
+        description: `${formData.brand} ${formData.model} a été mis à jour avec succès.`,
+      });
+      setShowEditDialog(false);
+    } else {
+      if (uploadedImages.length === 0) {
         toast({
-          title: "Véhicule modifié",
-          description: `${formData.brand} ${formData.model} a été mis à jour avec succès.`
+          variant: "destructive",
+          title: "Images requises",
+          description: "Veuillez ajouter au moins une image pour le véhicule.",
         });
-        setShowEditDialog(false);
-      } else {
-        // Mode ajout
-        if (uploadedImages.length === 0) {
-          toast({
-            variant: "destructive",
-            title: "Images requises",
-            description: "Veuillez ajouter au moins une image pour le véhicule."
-          });
-          setSubmitting(false);
-          return;
-        }
-        
-        // Make sure we're sending properly typed data
-        const typedFormData = {
-          ...formData,
-          category: formData.category as "économique" | "standard" | "premium" | "luxe" | "utilitaire",
-          transmission: formData.transmission as "manuel" | "automatique",
-          fuelType: formData.fuelType as "essence" | "diesel" | "électrique" | "hybride",
-        };
-        
-        const newCar = await carService.addCar(typedFormData, uploadedImages);
-        
-        setCars(prev => [...prev, newCar]);
-        
-        toast({
-          title: "Véhicule ajouté",
-          description: `${formData.brand} ${formData.model} a été ajouté avec succès.`
-        });
-        setShowAddDialog(false);
+        setSubmitting(false);
+        return;
       }
-      
-      setFilteredCars(cars);
-    } catch (error) {
+
+      const newCar = await carService.addCar(typedFormData, uploadedImages);
+      setCars((prev) => [...prev, newCar]);
+      toast({
+        title: "Véhicule ajouté",
+        description: `${formData.brand} ${formData.model} a été ajouté avec succès.`,
+      });
+      setShowAddDialog(false);
+    }
+
+    setFilteredCars((prev) => [...prev]); // Refresh or reapply filters here if needed
+  } catch (error) {
       console.error("Error submitting car:", error);
+  if (error.response?.data?.error?.details?.errors) {
+    console.error("Validation errors:", error.response.data.error.details.errors);
+  }
+    console.error("Error submitting car:", error);
+    let errorMessage = "Une erreur est survenue lors de l'enregistrement du véhicule.";
+    if (axios.isAxiosError(error)) {
+      console.error("Server response:", error.response?.data); // helpful for debugging
+      errorMessage = error.response?.data?.error?.message || errorMessage;
+    }
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: errorMessage,
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+
+const handleDelete = async (carId: string) => {
+  if (window.confirm("Êtes-vous sûr de vouloir supprimer ce véhicule ?")) {
+    try {
+      await carService.deleteCar(carId);
+      setCars((prev) => prev.filter((car) => car.id !== carId));
+      setFilteredCars((prev) => prev.filter((car) => car.id !== carId));
+      toast({
+        title: "Véhicule supprimé",
+        description: "Le véhicule a été supprimé avec succès.",
+      });
+    } catch (error) {
+      console.error("Error deleting car:", error);
+      let errorMessage = "Une erreur est survenue lors de la suppression du véhicule.";
+      if (axios.isAxiosError(error)) {
+        errorMessage = error.response?.data?.error?.message || errorMessage;
+      }
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Une erreur est survenue lors de l'enregistrement du véhicule."
+        description: errorMessage,
       });
-    } finally {
-      setSubmitting(false);
     }
-  };
-
-  const handleDelete = async (carId: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce véhicule ?")) {
-      try {
-        // Dans une vraie application, nous ferions un appel API ici
-        const updatedCars = cars.filter(car => car.id !== carId);
-        setCars(updatedCars);
-        setFilteredCars(updatedCars);
-
-        toast({
-          title: "Véhicule supprimé",
-          description: "Le véhicule a été supprimé avec succès."
-        });
-      } catch (error) {
-        console.error("Error deleting car:", error);
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Une erreur est survenue lors de la suppression du véhicule."
-        });
-      }
-    }
-  };
+  }
+};
 
   const CarForm = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -328,12 +338,12 @@ export default function AdminCars() {
         </div>
 
         <div>
-          <Label htmlFor="dailyPrice" className="mb-1 block">Prix journalier (TND)</Label>
+          <Label htmlFor="price" className="mb-1 block">Prix journalier (TND)</Label>
           <Input 
-            id="dailyPrice"
-            name="dailyPrice"
+            id="price"
+            name="price"
             type="number"
-            value={formData.dailyPrice}
+            value={formData.price}
             onChange={handleInputChange}
             min={0}
             required
@@ -368,7 +378,7 @@ export default function AdminCars() {
             className="w-full p-2 border rounded-md"
             required
           >
-            <option value="manuel">Manuelle</option>
+            <option value="manuelle">manuelle</option>
             <option value="automatique">Automatique</option>
           </select>
         </div>
@@ -620,7 +630,7 @@ export default function AdminCars() {
                       <TableCell>{car.brand}</TableCell>
                       <TableCell>{car.model}</TableCell>
                       <TableCell>{car.category}</TableCell>
-                      <TableCell>{car.dailyPrice} TND</TableCell>
+                      <TableCell>{car.price} TND</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${car.availability ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           {car.availability ? 'Disponible' : 'Indisponible'}

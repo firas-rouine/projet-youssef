@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { UserPlus, Search, Eye, Edit, Trash2, Mail } from "lucide-react";
-import { users } from "@/lib/mockData";
+import { usersService } from "@/services/users";
+import { messageService } from "@/services/messageService";
 import { User } from "@/lib/types";
 import {
   Dialog,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { messageService } from "@/services/messageService";
 import { toast } from "sonner";
 import {
   Popover,
@@ -33,56 +32,67 @@ import {
 } from "@/components/ui/popover";
 
 export default function UserManagement() {
-  const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [messageContent, setMessageContent] = useState("");
   const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
-  
-  // Utilisateur administrateur (simulé pour l'exemple)
+
   const adminUser = {
     id: "admin-1",
     firstName: "Admin",
-    lastName: "AutoWise"
+    lastName: "AutoWise",
   };
 
-  // Filter users when search term changes
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await usersService.getUsers();
+        setUsers(data);
+        setFilteredUsers(data);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredUsers(users);
-      return;
+    } else {
+      const term = searchTerm.toLowerCase();
+      setFilteredUsers(
+        users.filter(
+          (user) =>
+            user.firstName.toLowerCase().includes(term) ||
+            user.lastName.toLowerCase().includes(term) ||
+            user.email.toLowerCase().includes(term)
+        )
+      );
     }
+  }, [searchTerm, users]);
 
-    const term = searchTerm.toLowerCase();
-    const filtered = users.filter(
-      (user) =>
-        user.firstName.toLowerCase().includes(term) ||
-        user.lastName.toLowerCase().includes(term) ||
-        user.email.toLowerCase().includes(term) ||
-        user.phoneNumber.includes(term)
-    );
-    
-    setFilteredUsers(filtered);
-  }, [searchTerm]);
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("fr-FR");
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
-  // Gestionnaire pour la boite de dialogue d'envoi de message
   const handleOpenMessageDialog = (user: User) => {
     setCurrentUser(user);
     setIsMessageDialogOpen(true);
   };
 
-  // Gestionnaire d'envoi de message
   const handleSendMessage = async () => {
     if (!currentUser || !messageContent.trim()) return;
-    
     try {
       await messageService.sendMessage(adminUser.id, currentUser.id, messageContent);
       toast.success(`Message envoyé à ${currentUser.firstName} ${currentUser.lastName}`);
@@ -94,41 +104,32 @@ export default function UserManagement() {
     }
   };
 
-  // Gestionnaire pour la boite de dialogue de confirmation de suppression
   const handleOpenDeleteDialog = (user: User) => {
     setCurrentUser(user);
     setIsDeleteDialogOpen(true);
   };
 
-  // Fonction de suppression simulée
   const handleDeleteUser = () => {
     if (!currentUser) return;
-    
-    // Simuler la suppression de l'utilisateur
-    const updatedUsers = filteredUsers.filter(user => user.id !== currentUser.id);
+    const updatedUsers = users.filter((user) => user.id !== currentUser.id);
+    setUsers(updatedUsers);
     setFilteredUsers(updatedUsers);
     toast.success(`Utilisateur ${currentUser.firstName} ${currentUser.lastName} supprimé`);
     setIsDeleteDialogOpen(false);
   };
 
-  // Gestionnaire pour la vue détaillée
   const handleViewDetails = (user: User) => {
     setCurrentUser(user);
     setIsViewDetailsOpen(true);
   };
 
-  // Copier l'email dans le presse-papier
   const handleCopyEmail = (email: string) => {
     navigator.clipboard.writeText(email);
     toast.success("Email copié dans le presse-papier");
   };
 
   return (
-    <AdminLayout 
-      title="Gestion des utilisateurs" 
-      description="Gérez tous les utilisateurs de la plateforme"
-    >
-      {/* Action Bar */}
+    <AdminLayout title="Gestion des utilisateurs" description="Gérez tous les utilisateurs de la plateforme">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-2">
           <div className="relative w-64">
@@ -148,7 +149,6 @@ export default function UserManagement() {
         </Button>
       </div>
 
-      {/* Users Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <Table>
           <TableHeader>
@@ -165,9 +165,9 @@ export default function UserManagement() {
           <TableBody>
             {filteredUsers.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-mono text-xs text-gray-500">
-                  {user.id.substring(0, 8)}
-                </TableCell>
+               <TableCell className="font-mono text-xs text-gray-500">
+  {String(user.id).substring(0, 8)}
+</TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-3">
                     <Popover>
@@ -196,47 +196,28 @@ export default function UserManagement() {
                             )}
                           </Avatar>
                           <p className="font-semibold">{user.firstName} {user.lastName}</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="w-full"
-                            onClick={() => handleViewDetails(user)}
-                          >
+                          <Button variant="outline" size="sm" className="w-full" onClick={() => handleViewDetails(user)}>
                             Voir le profil complet
                           </Button>
                         </div>
                       </PopoverContent>
                     </Popover>
                     <div>
-                      <div className="font-medium">
-                        {user.firstName} {user.lastName}
-                      </div>
+                      <div className="font-medium">{user.firstName} {user.lastName}</div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <span className="cursor-pointer text-blue-600 hover:underline">
-                        {user.email}
-                      </span>
+                      <span className="cursor-pointer text-blue-600 hover:underline">{user.email}</span>
                     </PopoverTrigger>
                     <PopoverContent className="w-52">
                       <div className="flex flex-col space-y-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleCopyEmail(user.email)}
-                        >
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => handleCopyEmail(user.email)}>
                           Copier l'email
                         </Button>
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleOpenMessageDialog(user)}
-                        >
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenMessageDialog(user)}>
                           Envoyer un email
                         </Button>
                       </div>
@@ -245,42 +226,23 @@ export default function UserManagement() {
                 </TableCell>
                 <TableCell>{user.phoneNumber}</TableCell>
                 <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    user.role === "admin" 
-                      ? "bg-blue-100 text-blue-800" 
-                      : "bg-green-100 text-green-800"
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${user.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
                     {user.role === "admin" ? "Admin" : "Client"}
                   </span>
                 </TableCell>
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      title="Voir" 
-                      onClick={() => handleViewDetails(user)}
-                    >
+                    <Button variant="ghost" size="icon" title="Voir" onClick={() => handleViewDetails(user)}>
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" title="Modifier">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      title="Envoyer un message" 
-                      onClick={() => handleOpenMessageDialog(user)}
-                    >
+                    <Button variant="ghost" size="icon" title="Envoyer un message" onClick={() => handleOpenMessageDialog(user)}>
                       <Mail className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      title="Supprimer"
-                      onClick={() => handleOpenDeleteDialog(user)}
-                    >
+                    <Button variant="ghost" size="icon" title="Supprimer" onClick={() => handleOpenDeleteDialog(user)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
@@ -291,7 +253,7 @@ export default function UserManagement() {
         </Table>
       </div>
 
-      {/* Boîte de dialogue pour l'envoi de message */}
+      {/* Message Dialog */}
       <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -315,7 +277,7 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Boîte de dialogue de confirmation pour la suppression */}
+      {/* Delete Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
@@ -331,7 +293,7 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Boîte de dialogue pour les détails de l'utilisateur */}
+      {/* View Details Dialog */}
       <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -345,8 +307,7 @@ export default function UserManagement() {
                     <AvatarImage src={currentUser.profilePicture} alt={`${currentUser.firstName} ${currentUser.lastName}`} />
                   ) : (
                     <AvatarFallback className="text-xl bg-gray-200 text-gray-700">
-                      {currentUser.firstName.charAt(0)}
-                      {currentUser.lastName.charAt(0)}
+                      {currentUser.firstName.charAt(0)}{currentUser.lastName.charAt(0)}
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -355,7 +316,6 @@ export default function UserManagement() {
                   <p className="text-gray-500">{currentUser.email}</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">ID</p>
@@ -373,32 +333,6 @@ export default function UserManagement() {
                   <p className="text-sm text-gray-500">Date d'inscription</p>
                   <p>{formatDate(currentUser.createdAt)}</p>
                 </div>
-                {currentUser.address && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Adresse</p>
-                    <p>{currentUser.address}</p>
-                  </div>
-                )}
-                {currentUser.postalCode && (
-                  <div>
-                    <p className="text-sm text-gray-500">Code postal</p>
-                    <p>{currentUser.postalCode}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleOpenMessageDialog(currentUser)}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contacter
-                </Button>
-                <Button>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier
-                </Button>
               </div>
             </div>
           )}

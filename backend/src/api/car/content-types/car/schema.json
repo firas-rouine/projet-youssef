@@ -39,10 +39,7 @@
       "type": "decimal",
       "required": true
     },
-    "rating": {
-      "type": "decimal",
-      "required": true
-    },
+
     "description": {
       "type": "text",
       "required": true
@@ -58,18 +55,18 @@
     "fuelType": {
       "type": "enumeration",
       "enum": [
-        "Essence",
-        "Diesel",
-        "Électrique",
-        "Hybride"
+        "essence",
+        "diesel",
+        "électrique",
+        "hybride"
       ],
       "required": true
     },
     "transmission": {
       "type": "enumeration",
       "enum": [
-        "Automatique",
-        "Manuelle"
+        "automatique",
+        "manuelle"
       ],
       "required": true
     },

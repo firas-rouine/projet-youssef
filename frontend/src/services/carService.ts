@@ -14,13 +14,13 @@ interface StrapiCarResponse {
     images?: { data: Array<{ attributes: { url: string } }> };
     availability?: { available: boolean; availableDates?: Array<{ startDate: string; endDate: string }> };
     year: string | number; // Handle string or number
-    reviews?: Array<{
-      id: string;
-      userId: string;
-      rating: number;
-      comment: string;
-      date: string;
-    }>;
+    // reviews?: Array<{
+    //   id: string;
+    //   userId: string;
+    //   rating: number;
+    //   comment: string;
+    //   date: string;
+    // }>;
   };
 }
 
@@ -56,14 +56,14 @@ const getAllCars = async (): Promise<Car[]> => {
       features: item.attributes.features ?? [],
       category: item.attributes.category ?? "standard",
       location: item.attributes.location ?? undefined,
-      rating: item.attributes.rating ?? undefined,
-      reviews: item.attributes.reviews?.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        rating: r.rating,
-        comment: r.comment,
-        date: r.date,
-      })),
+      // rating: item.attributes.rating ?? undefined,
+      // reviews: item.attributes.reviews?.map((r) => ({
+      //   id: r.id,
+      //   userId: r.userId,
+      //   rating: r.rating,
+      //   comment: r.comment,
+      //   date: r.date,
+      // })),
     }));
   } catch (error) {
     console.error("Error fetching all cars:", error);
@@ -107,14 +107,14 @@ export async function getCarById(id: string): Promise<Car> {
       features: data.attributes.features ?? [],
       category: data.attributes.category ?? "standard",
       location: data.attributes.location ?? undefined,
-      rating: data.attributes.rating ?? undefined,
-      reviews: data.attributes.reviews?.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        rating: r.rating,
-        comment: r.comment,
-        date: r.date,
-      })),
+      // rating: data.attributes.rating ?? undefined,
+      // reviews: data.attributes.reviews?.map((r) => ({
+      //   id: r.id,
+      //   userId: r.userId,
+      //   rating: r.rating,
+      //   comment: r.comment,
+      //   date: r.date,
+      // })),
     };
   } catch (error) {
     console.error("Error in getCarById:", error);
@@ -205,14 +205,14 @@ export async function searchCars(filters: {
       features: item.attributes.features ?? [],
       category: item.attributes.category ?? "standard",
       location: item.attributes.location ?? undefined,
-      rating: item.attributes.rating ?? undefined,
-      reviews: item.attributes.reviews?.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        rating: r.rating,
-        comment: r.comment,
-        date: r.date,
-      })),
+      // rating: item.attributes.rating ?? undefined,
+      // reviews: item.attributes.reviews?.map((r) => ({
+      //   id: r.id,
+      //   userId: r.userId,
+      //   rating: r.rating,
+      //   comment: r.comment,
+      //   date: r.date,
+      // })),
     }));
 
     if (filters.brand) {
@@ -250,10 +250,149 @@ export async function searchCars(filters: {
   }
 };
 
+// Add a new car
+async function addCar(carData: Omit<Car, "id">, images: File[]): Promise<Car> {
+  try {
+    const formData = new FormData();
+    // Prepare attributes matching the Strapi schema
+    const attributes = {
+      brand: carData.brand,
+      model: carData.model,
+      year: carData.year,
+      transmission: carData.transmission.toLowerCase(),
+      fuelType: carData.fuelType.toLowerCase(),
+      seats: carData.seats,
+      price: carData.price,
+      hasAC: carData.hasAC,
+      hasDriver: carData.driverAvailable ?? false,
+      description: carData.description,
+      features: carData.features,
+      category: carData.category,
+      available: carData.availability?.available ?? true,
+    };
+    formData.append("data", JSON.stringify(attributes));
+    // Append images under 'files.images' (no indexing)
+    images.forEach((image) => formData.append("files.images", image));
+
+    console.log("FormData entries:", [...formData.entries()]);
+    const response = await axios.post<{ data: StrapiCarResponse }>(API_URL, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    const { data } = response.data;
+    return {
+      id: data.id.toString(),
+      brand: data.attributes.brand,
+      model: data.attributes.model,
+      year: Number(data.attributes.year),
+      transmission: data.attributes.transmission,
+      fuelType: data.attributes.fuelType,
+      seats: data.attributes.seats,
+      dailyPrice: data.attributes.price,
+      price: data.attributes.price,
+      hasAC: data.attributes.hasAC,
+      hasGPS: data.attributes.hasGPS ?? false,
+      childSeatAvailable: data.attributes.childSeatAvailable ?? false,
+      hasDriver: data.attributes.driverAvailable,
+      description: data.attributes.description,
+      images: data.attributes.images?.data?.map((img) => `http://localhost:1337${img.attributes.url}`) || [],
+      availability: {
+        available: data.attributes.available,
+        availableDates: data.attributes.availability?.availableDates,
+      },
+      features: data.attributes.features || [],
+      category: data.attributes.category,
+      location: data.attributes.location ?? undefined,
+
+    };
+  } catch (error) {
+    console.error("Error adding car:", error);
+    throw error;
+  }
+}
+
+async function updateCar(id: string, carData: Omit<Car, "id" | "reviews" | "rating">, images: File[]): Promise<Car> {
+  try {
+    const attributes = {
+      brand: carData.brand,
+      model: carData.model,
+      year: carData.year,
+      transmission: carData.transmission.toLowerCase(),
+      fuelType: carData.fuelType.toLowerCase(),
+      seats: carData.seats,
+      price: carData.price,
+      hasAC: carData.hasAC,
+      hasDriver: carData.driverAvailable,
+      description: carData.description,
+      features: carData.features,
+      category: carData.category,
+      available: carData.availability?.available ?? true,
+    };
+
+    const formData = new FormData();
+    formData.append("data", JSON.stringify(attributes));
+    images.forEach((image) => formData.append("files.images", image));
+
+    const response = await axios.put(`${API_URL}/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    const data = response.data.data;
+    return {
+      id: data.id.toString(),
+      brand: data.attributes.brand,
+      model: data.attributes.model,
+      year: Number(data.attributes.year),
+      transmission: data.attributes.transmission,
+      fuelType: data.attributes.fuelType,
+      seats: data.attributes.seats,
+      price: data.attributes.price,
+      hasAC: data.attributes.hasAC,
+      hasGPS: false, // not in schema
+      childSeatAvailable: false, // not in schema
+      hasDriver: data.attributes.driverAvailable,
+      description: data.attributes.description,
+      images: data.attributes.images?.data?.map((img) => `http://localhost:1337${img.attributes.url}`) || [],
+      availability: {
+        available: data.attributes.available,
+        availableDates: [], // not in schema
+      },
+      features: data.attributes.features || [],
+      category: data.attributes.category,
+      location: undefined, // not in schema
+      // rating: data.attributes.rating,
+      // reviews: [],
+    };
+  } catch (error) {
+    console.error("Error updating car:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Error response:", error.response?.data);
+    }
+    throw error;
+  }
+}
+
+
+async function deleteCar(id: string): Promise<void> {
+  try {
+    await axios.delete(`${API_URL}/${id}`);
+  } catch (error) {
+    console.error("Error deleting car:", error);
+    throw error;
+  }
+}
+const deleteCarImage = async (carId: string, imageId: string) => {
+  const response = await axios.delete(`${API_URL}/${carId}/images/${imageId}`);
+  return response.data;
+};
+
 export const carService = {
   getAllCars,
   getCarById,
   getBrands,
   getPriceRange,
   searchCars,
+  addCar,
+  updateCar,
+  deleteCar,
+  deleteCarImage
 };
